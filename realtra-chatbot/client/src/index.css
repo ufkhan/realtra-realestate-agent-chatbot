@@ -1,0 +1,17 @@
+/* Reset default margin and padding */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: #fff; /* update based on your brand colors */
+    max-width: 1500px;
+    margin: 0 auto;
+    position: relative;
+    overflow-x: hidden;
+}
