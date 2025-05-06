@@ -29,7 +29,7 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Not found' });
 });
 
-const PORT = 5050;
+const PORT = 5051;
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
