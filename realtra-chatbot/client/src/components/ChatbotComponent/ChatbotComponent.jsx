@@ -7,12 +7,10 @@ const ChatbotComponent = ({ config }) => {
     const [response, setResponse] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
-    const [showIntroMessage, setShowIntroMessage] = useState(false);
     const [welcomeShown, setWelcomeShown] = useState(false);
     const messagesEndRef = useRef(null);
     const sessionId = useRef(Date.now() + '-' + Math.floor(Math.random() * 100000));
 
-    // Inject theme variables
     const themeVars = config.theme
         ? {
               '--toggle-bg': config.theme.toggleBg,
@@ -38,10 +36,13 @@ const ChatbotComponent = ({ config }) => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            setShowIntroMessage(true);
-            const hideTimer = setTimeout(() => setShowIntroMessage(false), 10000);
-            return () => clearTimeout(hideTimer);
-        }, 10000);
+            setIsOpen(true);
+            if (!welcomeShown) {
+                setResponse((prev) => [...prev, { bot: config.welcomeMessage }]);
+                setWelcomeShown(true);
+            }
+        }, 3000);
+
         return () => clearTimeout(timer);
     }, []);
 
@@ -88,7 +89,6 @@ const ChatbotComponent = ({ config }) => {
             setWelcomeShown(true);
         }
         setIsOpen(!isOpen);
-        setShowIntroMessage(false);
     };
 
     return (
@@ -111,12 +111,6 @@ const ChatbotComponent = ({ config }) => {
                         />
                     )}
                 </div>
-
-                {showIntroMessage && !isOpen && (
-                    <div className="intro-message" onClick={handleChatbotToggle}>
-                        {config.introMessage}
-                    </div>
-                )}
 
                 {isOpen && (
                     <div className="chatbot-container">
