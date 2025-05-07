@@ -10,6 +10,7 @@ const ChatbotComponent = ({ config }) => {
     const [welcomeShown, setWelcomeShown] = useState(false);
     const messagesEndRef = useRef(null);
     const sessionId = useRef(Date.now() + '-' + Math.floor(Math.random() * 100000));
+    const manuallyOpened = useRef(false);
 
     const themeVars = config.theme
         ? {
@@ -36,10 +37,12 @@ const ChatbotComponent = ({ config }) => {
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            setIsOpen(true);
-            if (!welcomeShown) {
-                setResponse((prev) => [...prev, { bot: config.welcomeMessage }]);
-                setWelcomeShown(true);
+            if (!manuallyOpened.current) {
+                setIsOpen(true);
+                if (!welcomeShown) {
+                    setResponse((prev) => [...prev, { bot: config.welcomeMessage }]);
+                    setWelcomeShown(true);
+                }
             }
         }, 3000);
 
@@ -87,6 +90,7 @@ const ChatbotComponent = ({ config }) => {
         if (!isOpen && !welcomeShown) {
             setResponse((prev) => [...prev, { bot: config.welcomeMessage }]);
             setWelcomeShown(true);
+            manuallyOpened.current = true;
         }
         setIsOpen(!isOpen);
     };
