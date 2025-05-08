@@ -4,9 +4,7 @@ const chatbotConfigs = {
         name: 'Realtra™ Agent X',
         avatar: '/chatbotwelcome.png',
         avatar2: '/chatbotwelcome2.png',
-        introMessage: "Hi there! I'm here to help! 😊",
-        welcomeMessage:
-            "Hi there! I'm here to help. Feel free to ask me anything about our services.",
+        welcomeMessage: 'Hey there! 👋 Are you looking to buy a new home or sell your current one?',
 
         theme: {
             toggleBg: '#ffc172', // Chat icon button (closed state) background
@@ -35,7 +33,6 @@ const chatbotConfigs = {
         name: 'Elite Homes Bot',
         avatar: '/elite-avatar.png',
         avatar2: '/elite-avatar.png',
-        introMessage: 'Welcome to Elite Homes 🏠',
         welcomeMessage: 'Hey there! Looking to buy or sell a property? I’m here to help!',
 
         theme: {
