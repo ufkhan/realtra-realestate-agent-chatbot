@@ -34,7 +34,6 @@ const buyerSteps = [
     },
     { key: 'name', question: 'Can you share your full name?' },
     { key: 'phone', question: 'What’s the best phone number to reach you at?' },
-    { key: 'email', question: 'And your email address?' },
 ];
 
 const sellerSteps = [
@@ -68,7 +67,6 @@ const sellerSteps = [
     },
     { key: 'name', question: 'Can you share your full name?' },
     { key: 'phone', question: 'What’s the best phone number to reach you at?' },
-    { key: 'email', question: 'And your email address?' },
 ];
 
 router.post('/', async (req, res) => {
@@ -114,14 +112,6 @@ respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formattin
   "answered": false,
   "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries with the end goal of helping them answer the question \"${currentStep.question}\"]",
   "value": ""
-}
-
-SPECIAL CASE — EMAIL:
-If the ${currentStep.question} is about email, and the user says they don't have one or refuses to share, then treat it as answered and respond with this:
-{
-  "answered": true,
-  "reply": "[reply with a 'no problem', and follow up with a friendly confirmation that email is skipped]",
-  "value": "not_provided"
 }
 
 Do not include extra commentary. Always return raw JSON. No triple backticks. No formatting.`,
@@ -173,7 +163,7 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
             session.currentStepStartTime = new Date();
             userSessions[sessionId] = session;
 
-            // Save partial state
+            // Save state as we go
             await db.collection('leads').updateOne(
                 { sessionId },
                 {
