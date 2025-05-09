@@ -5,23 +5,70 @@ import { connectToDB } from '../dbConnect.js';
 const router = express.Router();
 const userSessions = {};
 
-const steps = [
-    {
-        key: 'intent',
-        question: 'Are you looking to buy or sell a home?',
-        expected: 'buy or sell',
-    },
+const defaultStep = {
+    key: 'intent',
+    question: 'Are you looking to buy or sell a home?',
+};
+
+const buyerSteps = [
     {
         key: 'location',
-        question: 'What location are you interested in?',
-        expected: 'a city or neighborhood',
+        question: 'What city or neighborhood are you looking to buy in?',
     },
     {
         key: 'propertyType',
         question:
-            'What type of property are you looking for? (e.g. single-family, condo, etc.)',
-        expected: 'a property type',
+            'What type of property are you looking for? (e.g. single-family, condo, townhouse)',
     },
+    { key: 'bedrooms', question: 'How many bedrooms do you need?' },
+    {
+        key: 'budget',
+        question: 'What is your approximate budget range for the purchase?',
+    },
+    { key: 'timeline', question: 'When are you planning to buy your new home?' },
+    { key: 'financing', question: 'Will you be using financing or paying in cash?' },
+    {
+        key: 'motivation',
+        question:
+            'What’s your main reason for buying right now? (e.g. relocating, upgrading, investing)',
+    },
+    { key: 'name', question: 'Can you share your full name?' },
+    { key: 'phone', question: 'What’s the best phone number to reach you at?' },
+    { key: 'email', question: 'And your email address?' },
+];
+
+const sellerSteps = [
+    {
+        key: 'propertyAddress',
+        question: 'What is the address of the property you want to sell?',
+    },
+    {
+        key: 'propertyType',
+        question:
+            'What type of property is it? (e.g. single-family, condo, townhouse, multi-unit)',
+    },
+    { key: 'bedrooms', question: 'How many bedrooms does the property have?' },
+    {
+        key: 'condition',
+        question:
+            'What is the overall condition of the property? (e.g. excellent, good, needs some work)',
+    },
+    {
+        key: 'reasonForSelling',
+        question: 'What’s your reason for selling the property?',
+    },
+    { key: 'timeline', question: 'When are you hoping to sell?' },
+    {
+        key: 'priceExpectation',
+        question: 'Do you have a price or range in mind for the sale?',
+    },
+    {
+        key: 'mortgageStatus',
+        question: 'Is there an existing mortgage on the property?',
+    },
+    { key: 'name', question: 'Can you share your full name?' },
+    { key: 'phone', question: 'What’s the best phone number to reach you at?' },
+    { key: 'email', question: 'And your email address?' },
 ];
 
 router.post('/', async (req, res) => {
@@ -33,9 +80,10 @@ router.post('/', async (req, res) => {
             messages: [],
             stepIndex: 0,
             answers: {},
+            steps: [defaultStep],
         };
 
-        const currentStep = steps[session.stepIndex];
+        const currentStep = session.steps[session.stepIndex];
         session.messages.push({ role: 'user', content: message });
 
         const strictEvaluator = [
@@ -52,11 +100,11 @@ If the user answered the question: "${currentStep.question}" in their response, 
   "value": "[clean extracted value, like 'buy', 'sell', etc. something which accurately but concisely extracts the users answer to question: \"${currentStep.question}\"]"
 }
 
-However If the user did NOT answer the question: "${currentStep.question}" in their response, seemed confused, or asked for suggestions
+However If the user did NOT answer the question: "${currentStep.question}" in their response, seemed confused, or asked for suggestions,
 respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formatting), like this:
 {
   "answered": false,
-  "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queires with the end goal of helping them answer the question "${currentStep.question}"]",
+  "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries with the end goal of helping them answer the question \"${currentStep.question}\"]",
   "value": ""
 }`,
             },
@@ -86,11 +134,16 @@ respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formattin
             return res.json({ reply: parsed.reply });
         }
 
-        // Only reached if answered === true
         session.answers[currentStep.key] = parsed.value;
         session.stepIndex++;
 
-        if (session.stepIndex >= steps.length) {
+        if (currentStep.key === 'intent') {
+            const intent = parsed.value.toLowerCase();
+            session.steps = intent === 'buy' ? buyerSteps : sellerSteps;
+            session.stepIndex = 0;
+        }
+
+        if (session.stepIndex >= session.steps.length) {
             const db = await connectToDB();
             await db.collection('leads').insertOne({
                 ...session.answers,
@@ -108,7 +161,7 @@ respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formattin
             });
         }
 
-        const nextStep = steps[session.stepIndex];
+        const nextStep = session.steps[session.stepIndex];
         const nextQuestion = nextStep.question;
         session.messages.push({ role: 'assistant', content: nextQuestion });
         userSessions[sessionId] = session;
