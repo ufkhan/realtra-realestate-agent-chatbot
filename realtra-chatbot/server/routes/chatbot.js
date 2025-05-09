@@ -73,6 +73,7 @@ const sellerSteps = [
 
 router.post('/', async (req, res) => {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const db = await connectToDB();
 
     try {
         const { message, sessionId = 'default', clientId = 'realtra' } = req.body;
@@ -122,7 +123,7 @@ If the ${currentStep.question} is about email, and the user says they don't have
   "reply": "[reply with a 'no problem', and follow up with a friendly confirmation that email is skipped]",
   "value": "not_provided"
 }
-  
+
 Do not include extra commentary. Always return raw JSON. No triple backticks. No formatting.`,
             },
             ...session.messages.slice(-6),
@@ -171,6 +172,24 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
         if (!parsed.answered) {
             session.currentStepStartTime = new Date();
             userSessions[sessionId] = session;
+
+            // Save partial state
+            await db.collection('leads').updateOne(
+                { sessionId },
+                {
+                    $set: {
+                        sessionId,
+                        clientId,
+                        createdAt: new Date(),
+                        flowType: session.flowType,
+                        answers: session.answers,
+                        stepsLog: session.stepsLog,
+                        completed: false,
+                    },
+                },
+                { upsert: true },
+            );
+
             return res.json({ reply: parsed.reply });
         }
 
@@ -184,20 +203,26 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
             session.stepIndex = 0;
         }
 
-        if (session.stepIndex >= session.steps.length) {
-            const db = await connectToDB();
-            await db.collection('leads').insertOne({
-                sessionId,
-                clientId,
-                createdAt: new Date(),
-                flowType: session.flowType,
-                answers: session.answers,
-                stepsLog: session.stepsLog,
-                completed: true,
-            });
+        const isFinalStep = session.stepIndex >= session.steps.length;
 
+        await db.collection('leads').updateOne(
+            { sessionId },
+            {
+                $set: {
+                    sessionId,
+                    clientId,
+                    createdAt: new Date(),
+                    flowType: session.flowType,
+                    answers: session.answers,
+                    stepsLog: session.stepsLog,
+                    completed: isFinalStep,
+                },
+            },
+            { upsert: true },
+        );
+
+        if (isFinalStep) {
             delete userSessions[sessionId];
-
             return res.json({
                 reply: [
                     parsed.reply,
@@ -215,7 +240,7 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
             timestamp: new Date(),
         });
         session.currentStepStartTime = new Date();
-        session.currentStepMessageCount = 0; // reset count for next step
+        session.currentStepMessageCount = 0;
         userSessions[sessionId] = session;
 
         return res.json({ reply: [parsed.reply, ' ', nextQuestion] });
