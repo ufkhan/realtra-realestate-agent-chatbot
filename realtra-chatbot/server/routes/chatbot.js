@@ -6,7 +6,11 @@ const router = express.Router();
 const userSessions = {};
 
 const steps = [
-    { key: 'intent', question: 'Are you looking to buy or sell a home?', expected: 'buy or sell' },
+    {
+        key: 'intent',
+        question: 'Are you looking to buy or sell a home?',
+        expected: 'buy or sell',
+    },
     {
         key: 'location',
         question: 'What location are you interested in?',
@@ -14,7 +18,8 @@ const steps = [
     },
     {
         key: 'propertyType',
-        question: 'What type of property are you looking for? (e.g. single-family, condo, etc.)',
+        question:
+            'What type of property are you looking for? (e.g. single-family, condo, etc.)',
         expected: 'a property type',
     },
 ];
@@ -51,10 +56,11 @@ However If the user did NOT answer the question: "${currentStep.question}" in th
 respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formatting), like this:
 {
   "answered": false,
-  "reply": "[a short and concise friendly, natural response that helps clarify or gives examples, and then re-asks the question \"${currentStep.question}\" in a REWORDED way. Be natural not robotic]",
+  "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queires with the end goal of helping them answer the question "${currentStep.question}"]",
   "value": ""
 }`,
             },
+            ...session.messages.slice(-6),
             { role: 'user', content: message },
         ];
 
@@ -73,40 +79,41 @@ respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formattin
             return res.json({ reply: currentStep.question });
         }
 
-        if (parsed.answered) {
-            session.answers[currentStep.key] = parsed.value;
-            session.stepIndex++;
-            session.messages.push({ role: 'assistant', content: parsed.reply });
+        session.messages.push({ role: 'assistant', content: parsed.reply });
 
-            if (session.stepIndex >= steps.length) {
-                const db = await connectToDB();
-                await db.collection('leads').insertOne({
-                    ...session.answers,
-                    sessionId,
-                    clientId,
-                    createdAt: new Date(),
-                });
-                delete userSessions[sessionId];
-                return res.json({
-                    reply: [
-                        parsed.reply,
-                        ' ',
-                        `Thanks! You're all set. One of our agents will reach out to you soon.`,
-                    ],
-                });
-            }
-
-            const nextStep = steps[session.stepIndex];
-            const nextQuestion = nextStep.question;
-            session.messages.push({ role: 'assistant', content: nextQuestion });
-            userSessions[sessionId] = session;
-
-            return res.json({ reply: [parsed.reply, ' ', nextQuestion] });
-        } else {
-            session.messages.push({ role: 'assistant', content: parsed.reply });
+        if (!parsed.answered) {
             userSessions[sessionId] = session;
             return res.json({ reply: parsed.reply });
         }
+
+        // Only reached if answered === true
+        session.answers[currentStep.key] = parsed.value;
+        session.stepIndex++;
+
+        if (session.stepIndex >= steps.length) {
+            const db = await connectToDB();
+            await db.collection('leads').insertOne({
+                ...session.answers,
+                sessionId,
+                clientId,
+                createdAt: new Date(),
+            });
+            delete userSessions[sessionId];
+            return res.json({
+                reply: [
+                    parsed.reply,
+                    ' ',
+                    `Thanks! You're all set. One of our agents will reach out to you soon.`,
+                ],
+            });
+        }
+
+        const nextStep = steps[session.stepIndex];
+        const nextQuestion = nextStep.question;
+        session.messages.push({ role: 'assistant', content: nextQuestion });
+        userSessions[sessionId] = session;
+
+        return res.json({ reply: [parsed.reply, ' ', nextQuestion] });
     } catch (err) {
         console.error('🔥 Step Evaluation Error:', err);
         return res.status(500).json({ error: 'Something went wrong.' });
