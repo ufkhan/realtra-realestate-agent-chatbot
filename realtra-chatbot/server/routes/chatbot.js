@@ -83,13 +83,12 @@ router.post('/', async (req, res) => {
             steps: [defaultStep],
             stepsLog: [],
             flowType: null,
+            currentStepMessageCount: 0, // counts how many user messages per step
         };
 
         const now = new Date();
-
-        if (!session.currentStepStartTime) {
-            session.currentStepStartTime = now;
-        }
+        session.currentStepStartTime = session.currentStepStartTime || now;
+        session.currentStepMessageCount = (session.currentStepMessageCount || 0) + 1;
 
         const currentStep = session.steps[session.stepIndex];
         session.messages.push({ role: 'user', content: message, timestamp: now });
@@ -147,6 +146,7 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
 
         const responseTime = new Date();
         const durationMs = responseTime - session.currentStepStartTime;
+        const wordCount = message.split(/\s+/).length; // word count of the user message
 
         session.messages.push({
             role: 'assistant',
@@ -163,7 +163,9 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
             value: parsed.value,
             startTime: session.currentStepStartTime,
             responseTime,
-            durationMs,
+            durationMs, // total time to answer the step
+            messageCount: session.currentStepMessageCount, // total messages it took to answer this step
+            wordCount, // word count of final user message
         });
 
         if (!parsed.answered) {
@@ -213,6 +215,7 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
             timestamp: new Date(),
         });
         session.currentStepStartTime = new Date();
+        session.currentStepMessageCount = 0; // reset count for next step
         userSessions[sessionId] = session;
 
         return res.json({ reply: [parsed.reply, ' ', nextQuestion] });
