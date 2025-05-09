@@ -20,7 +20,7 @@ const buyerSteps = [
         question:
             'What type of property are you looking for? (e.g. single-family, condo, townhouse)',
     },
-    { key: 'bedrooms', question: 'How many bedrooms do you need?' },
+    { key: 'bedrooms', question: 'How many bedrooms do you need in your house?' },
     {
         key: 'budget',
         question: 'What is your approximate budget range for the purchase?',
@@ -110,7 +110,7 @@ router.post('/', async (req, res) => {
                 respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formatting), like this:
                 {
                 "answered": false,
-                "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries with the end goal of helping them answer the question \"${currentStep.question}\"]",
+                "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries. you may have to search google. do it if they ask a question which you dont know answer to! and remember the end goal is helping them and pushing them to answer the question \"${currentStep.question}\"]",
                 "value": ""
                 }
 
@@ -142,7 +142,7 @@ router.post('/', async (req, res) => {
             session.currentStepMessageCount >= 3
         ) {
             const stepMessages = session.messages.slice(
-                -(session.currentStepMessageCount + 3),
+                -(session.currentStepMessageCount * 2),
             );
             const conversationHistory = stepMessages
                 .map((m) => `- ${m.role === 'user' ? 'User' : 'Bot'}: ${m.content}`)
@@ -160,10 +160,10 @@ router.post('/', async (req, res) => {
             Here is the recent conversation between the user and the bot:
             ${conversationHistory}
             
-            - If the user seems engaged — asking follow-up questions or actively trying to understand and reach a decision — respond ONLY with:
+            - If the user seems engaged — asking follow-up questions or actively trying to understand and reach a decision — respond ONLY with JSON:
             { "isStuck": false }
             
-            - If the user is clearly **unable to answer**, repeatedly says they don't know, or is **avoiding the question despite multiple follow-ups**, respond ONLY with:
+            - If the user is clearly **unable to answer**, repeatedly says they don't know, or is **avoiding the question despite multiple follow-ups**, respond ONLY with JSON:
             { "isStuck": true }
             
             "Respond ONLY with raw JSON. Do NOT include any extra text, commentary, greetings, or explanations. Return ONLY a valid JSON object, nothing else. No triple backticks. No formatting. If you're unsure, still return valid JSON with appropriate default values."
