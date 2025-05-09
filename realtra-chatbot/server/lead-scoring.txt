@@ -1,0 +1,74 @@
+This file talks about the criteria for lead scoring
+
+---
+
+## 📦 Extra Data to Store
+
+### 🧾 Common for All Leads:
+- sessionId: Unique identifier for the conversation
+- clientId: Your client identifier (e.g. 'realtra')
+- createdAt: When the lead completed the flow
+- flowType: "buy" or "sell" based on user intent
+- answers: Final structured answers to all questions
+- stepsLog: Detailed log of each step including:
+  - stepKey
+  - question
+  - userMessage
+  - botReply
+  - answered (true/false)
+  - value (cleaned GPT interpretation)
+  - startTime (when bot asked)
+  - responseTime (when user responded)
+  - durationMs (time to respond)
+
+---
+
+## 🏠 Buyer Questions (stored in answers and stepsLog)
+- location
+- propertyType
+- bedrooms
+- budget
+- timeline
+- financing
+- motivation
+- name
+- phone
+- email
+
+---
+
+## 🏡 Seller Questions (stored in answers and stepsLog)
+- propertyAddress
+- propertyType
+- bedrooms
+- condition
+- reasonForSelling
+- timeline
+- priceExpectation
+- mortgageStatus
+- name
+- phone
+- email
+
+---
+
+## 🔢 Lead Scoring Criteria
+
+### 🧠 Explicit Criteria (from answers)
+Buyer:
+- Timeline (sooner = hotter)
+- Budget (higher = more qualified)
+- Financing (pre-approved/cash = strong)
+- Motivation (e.g. relocation = serious)
+
+Seller:
+- Timeline (sooner = hotter)
+- Property condition (good/excellent = easier sale)
+- Price expectation (realistic = better)
+- Mortgage status (low/no mortgage = smoother close)
+
+### 📈 Behavioral Criteria (from stepsLog)
+- durationMs (faster replies = more engaged)
+- answered rate (skipping questions = lower quality)
+- Message clarity (future: via sentiment or token count)
+- Engagement level (e.g. detailed answers, questions asked)

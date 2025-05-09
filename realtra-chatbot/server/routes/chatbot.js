@@ -81,10 +81,18 @@ router.post('/', async (req, res) => {
             stepIndex: 0,
             answers: {},
             steps: [defaultStep],
+            stepsLog: [],
+            flowType: null,
         };
 
+        const now = new Date();
+
+        if (!session.currentStepStartTime) {
+            session.currentStepStartTime = now;
+        }
+
         const currentStep = session.steps[session.stepIndex];
-        session.messages.push({ role: 'user', content: message });
+        session.messages.push({ role: 'user', content: message, timestamp: now });
 
         const strictEvaluator = [
             {
@@ -115,7 +123,7 @@ If the ${currentStep.question} is about email, and the user says they don't have
   "reply": "[reply with a 'no problem', and follow up with a friendly confirmation that email is skipped]",
   "value": "not_provided"
 }
-
+  
 Do not include extra commentary. Always return raw JSON. No triple backticks. No formatting.`,
             },
             ...session.messages.slice(-6),
@@ -137,9 +145,29 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
             return res.json({ reply: currentStep.question });
         }
 
-        session.messages.push({ role: 'assistant', content: parsed.reply });
+        const responseTime = new Date();
+        const durationMs = responseTime - session.currentStepStartTime;
+
+        session.messages.push({
+            role: 'assistant',
+            content: parsed.reply,
+            timestamp: responseTime,
+        });
+
+        session.stepsLog.push({
+            stepKey: currentStep.key,
+            question: currentStep.question,
+            userMessage: message,
+            botReply: parsed.reply,
+            answered: parsed.answered,
+            value: parsed.value,
+            startTime: session.currentStepStartTime,
+            responseTime,
+            durationMs,
+        });
 
         if (!parsed.answered) {
+            session.currentStepStartTime = new Date();
             userSessions[sessionId] = session;
             return res.json({ reply: parsed.reply });
         }
@@ -150,18 +178,24 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
         if (currentStep.key === 'intent') {
             const intent = parsed.value.toLowerCase();
             session.steps = intent === 'buy' ? buyerSteps : sellerSteps;
+            session.flowType = intent;
             session.stepIndex = 0;
         }
 
         if (session.stepIndex >= session.steps.length) {
             const db = await connectToDB();
             await db.collection('leads').insertOne({
-                ...session.answers,
                 sessionId,
                 clientId,
                 createdAt: new Date(),
+                flowType: session.flowType,
+                answers: session.answers,
+                stepsLog: session.stepsLog,
+                completed: true,
             });
+
             delete userSessions[sessionId];
+
             return res.json({
                 reply: [
                     parsed.reply,
@@ -173,7 +207,12 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
 
         const nextStep = session.steps[session.stepIndex];
         const nextQuestion = nextStep.question;
-        session.messages.push({ role: 'assistant', content: nextQuestion });
+        session.messages.push({
+            role: 'assistant',
+            content: nextQuestion,
+            timestamp: new Date(),
+        });
+        session.currentStepStartTime = new Date();
         userSessions[sessionId] = session;
 
         return res.json({ reply: [parsed.reply, ' ', nextQuestion] });
