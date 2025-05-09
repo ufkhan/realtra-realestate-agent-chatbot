@@ -106,7 +106,17 @@ respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formattin
   "answered": false,
   "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries with the end goal of helping them answer the question \"${currentStep.question}\"]",
   "value": ""
-}`,
+}
+
+SPECIAL CASE — EMAIL:
+If the ${currentStep.question} is about email, and the user says they don't have one or refuses to share, then treat it as answered and respond with this:
+{
+  "answered": true,
+  "reply": "[reply with a 'no problem', and follow up with a friendly confirmation that email is skipped]",
+  "value": "not_provided"
+}
+
+Do not include extra commentary. Always return raw JSON. No triple backticks. No formatting.`,
             },
             ...session.messages.slice(-6),
             { role: 'user', content: message },
