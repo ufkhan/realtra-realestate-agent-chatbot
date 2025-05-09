@@ -1,27 +1,5 @@
 This file talks about the criteria for lead scoring
 
----
-
-## 📦 Extra Data to Store
-
-### 🧾 Common for All Leads:
-- sessionId: Unique identifier for the conversation
-- clientId: Your client identifier (e.g. 'realtra')
-- createdAt: When the lead completed the flow
-- flowType: "buy" or "sell" based on user intent
-- answers: Final structured answers to all questions
-- stepsLog: Detailed log of each step including:
-  - stepKey
-  - question
-  - userMessage
-  - botReply
-  - answered (true/false)
-  - value (cleaned GPT interpretation)
-  - startTime (when bot asked)
-  - responseTime (when user responded)
-  - durationMs (time to respond)
-
----
 
 ## 🏠 Buyer Questions (stored in answers and stepsLog)
 - location
@@ -67,8 +45,40 @@ Seller:
 - Price expectation (realistic = better)
 - Mortgage status (low/no mortgage = smoother close)
 
-### 📈 Behavioral Criteria (from stepsLog)
-- durationMs (faster replies = more engaged)
-- answered rate (skipping questions = lower quality)
-- Message clarity (future: via sentiment or token count)
-- Engagement level (e.g. detailed answers, questions asked)
+
+
+
+5 Tier Approach to Score Leads
+
+---- Tier 1: Form Completion ----
+
+  - Simply ensure that the user has completed the form. if so +50. otherwise 0.
+
+
+---- Tier 2: Preparedness, Readiness, and Seriousness ---- 
+  - Go through the number of answers the user didnt directly answer for (go through DB and youll see if the same question took multiple attmepts to get 'answered: true'). higher = less ready and lower score
+
+---- Tier 3: Reasonability of Answers ----
+
+  - Go through each answer for each question individually and make sure reasonable. (eg: Budget is not 1 trillion USD, location is not Antarctica, type of house is not a treehouse, etc)
+  - Go through possible combinations and make sure reasonable. (eg: location + type of house + # bedrooms matches budget)
+  - GPT can then give a score between 1 to 100 of reasonability
+
+---- Tier 4: General Lead Temp Gauges ----
+  - Go through answers which can have an actual impact on a lead being colder or warmer (eg: looking to buy/sell ASAP, higher budget = warmer lead, payment in cash better, etc)
+      - Add scores based on each answers (discuss with gpt about appropriate numbers)
+  - Paste entire convo [question: answer] to GPT and ask for its evaluation of 
+      - Tone (friendly, angry, excited, urgent, laid back, nonchalant, etc), Detail of Answers and thought put in answers, 
+        Consistency of answers (are there contradictions? contradictions = minus points)
+      - GPT can give a confidence level score for this section
+  - GPT then returns final score for this Tier
+
+---- Tier 5: Client Preferences ----
+  - Adjust score for this tier according to specific client preferences. (if client prefers location x only and this lead matches that then add to score for this lead, etc)
+
+
+At end, GPT can calcualte and give a final score while giving an explanation and summary of why it gave that score summarizing its findings from the above tiers
+
+
+Looking to add:
+- If user is unsure about certain fields that can be a negative sign or show unpreparefness or seriousness. trying to find a way to track that rn. if so, then can add another tier as well

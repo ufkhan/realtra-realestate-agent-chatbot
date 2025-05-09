@@ -97,24 +97,24 @@ router.post('/', async (req, res) => {
                 role: 'system',
                 content: `You are a real estate lead qualification evaluator.
 
-You will be given a question and a user response. Your job is to return a JSON object that indicates whether the question "${currentStep.question}" was answered — and respond accordingly.
+                You will be given a question and a user response. Your job is to return a JSON object that indicates whether the question "${currentStep.question}" was answered — and respond accordingly.
 
-If the user answered the question: "${currentStep.question}" in their response, then respond ONLY with this raw JSON:
-{
-  "answered": true,
-  "reply": "[short friendly confirmation message only]",
-  "value": "[clean extracted value, like 'buy', 'sell', etc. something which accurately but concisely extracts the users answer to question: \"${currentStep.question}\"]"
-}
+                If the user answered the question: "${currentStep.question}" in their response, then respond ONLY with this raw JSON:
+                {
+                "answered": true,
+                "reply": "[short friendly confirmation message only]",
+                "value": "[clean extracted value which is a direct answer to the question: "${currentStep.question}", like 'buy', 'sell', '$500k, 'ASAP', etc. something which accurately but concisely extracts the users answer to question: \"${currentStep.question}\"]"
+                }
 
-However If the user did NOT answer the question: "${currentStep.question}" in their response, seemed confused, or asked for suggestions,
-respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formatting), like this:
-{
-  "answered": false,
-  "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries with the end goal of helping them answer the question \"${currentStep.question}\"]",
-  "value": ""
-}
+                However If the user did NOT answer the question: "${currentStep.question}" in their response, seemed confused, or asked for suggestions,
+                respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formatting), like this:
+                {
+                "answered": false,
+                "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries with the end goal of helping them answer the question \"${currentStep.question}\"]",
+                "value": ""
+                }
 
-Do not include extra commentary. Always return raw JSON. No triple backticks. No formatting.`,
+                "Respond ONLY with raw JSON. Do NOT include any extra text, commentary, greetings, or explanations. Return ONLY a valid JSON object, nothing else. No triple backticks. No formatting. If you're unsure, still return valid JSON with appropriate default values."`,
             },
             ...session.messages.slice(-6),
             { role: 'user', content: message },
@@ -133,6 +133,57 @@ Do not include extra commentary. Always return raw JSON. No triple backticks. No
         } catch (err) {
             console.error('❌ GPT Parse Fail:', err);
             return res.json({ reply: currentStep.question });
+        }
+
+        // Engagement logic trigger (only if stuck on same step for multiple rounds)
+        if (
+            !parsed.answered &&
+            currentStep.key !== 'intent' &&
+            session.currentStepMessageCount >= 3
+        ) {
+            const stepMessages = session.messages.slice(
+                -(session.currentStepMessageCount + 3),
+            );
+            const conversationHistory = stepMessages
+                .map((m) => `- ${m.role === 'user' ? 'User' : 'Bot'}: ${m.content}`)
+                .join('\n');
+            console.log('CONVO: ', conversationHistory);
+            const engagementCheck = await openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are a smart assistant helping evaluate real estate leads.
+            
+            Your task is to determine whether the user is **stuck** answering this question: "${currentStep.question}"
+            
+            Here is the recent conversation between the user and the bot:
+            ${conversationHistory}
+            
+            - If the user seems engaged — asking follow-up questions or actively trying to understand and reach a decision — respond ONLY with:
+            { "isStuck": false }
+            
+            - If the user is clearly **unable to answer**, repeatedly says they don't know, or is **avoiding the question despite multiple follow-ups**, respond ONLY with:
+            { "isStuck": true }
+            
+            "Respond ONLY with raw JSON. Do NOT include any extra text, commentary, greetings, or explanations. Return ONLY a valid JSON object, nothing else. No triple backticks. No formatting. If you're unsure, still return valid JSON with appropriate default values."
+`,
+                    },
+                ],
+            });
+
+            try {
+                const rawEngagement = engagementCheck.choices[0].message.content.trim();
+                const clean = rawEngagement.replace(/^```json\s*|```$/g, '').trim();
+                const engagement = JSON.parse(clean);
+                if (engagement.isStuck) {
+                    parsed.answered = true;
+                    parsed.value = 'not_provided';
+                    parsed.reply = 'No worries — we’ll leave that blank and move on.';
+                }
+            } catch (err) {
+                console.error('⚠️ GPT Engagement Check Parse Error:', err);
+            }
         }
 
         const responseTime = new Date();
