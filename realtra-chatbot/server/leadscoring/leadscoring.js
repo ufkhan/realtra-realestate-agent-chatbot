@@ -3,6 +3,7 @@ dotenv.config();
 
 import { connectToDB } from '../dbConnect.js';
 import { OpenAI } from 'openai';
+import chatbotConfigs from '../data/chatbotConfigs.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -108,10 +109,10 @@ const scoreLeadWithGPT = async ({
             {
                 role: 'system',
                 content: `You are a lead validation expert. Evaluate each of the following reasonability checks and return a JSON array of objects. Each object must include:
-- check (copied as is)
-- input (copied as is)
-- score (0–100)
-- explanation (1–2 line reason why that score)`,
+                - check (copied as is)
+                - input (copied as is)
+                - score (0–100)
+                - explanation (1–2 line reason why that score)`,
             },
             { role: 'user', content: JSON.stringify(tier3Checks) },
         ];
@@ -301,6 +302,62 @@ const scoreLeadWithGPT = async ({
     } catch (err) {
         console.error('❌ Tier 4 GPT Error:', err);
         tierExplanations.push('Tier 4 scoring failed. +0');
+    }
+
+    // --- Tier 5: Client Preferences Match (Max 10)
+    try {
+        const clientConfig = chatbotConfigs[clientId];
+        const preferences = clientConfig?.preferences;
+
+        if (preferences) {
+            const prefPrompt = [
+                {
+                    role: 'system',
+                    content: `You are a lead evaluator.
+
+                    You will receive the client's preferences and a full lead Q&A. Score how well the lead matches the preferences (max 10 points). Be objective and logical.
+
+                    Return ONLY raw JSON:
+                    {
+                    "score": 0–10,
+                    "explanation": "[Short reason explaining how well the answers match the preferences]"
+                    }`,
+                },
+                {
+                    role: 'user',
+                    content: `Client preferences:\n${JSON.stringify(
+                        preferences,
+                        null,
+                        2,
+                    )}\n\nLead answers:\n${JSON.stringify(answers, null, 2)}`,
+                },
+            ];
+
+            const prefResult = await openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: prefPrompt,
+            });
+
+            const raw = prefResult.choices[0].message.content
+                .trim()
+                .replace(/^```json|```$/g, '');
+            const parsed = JSON.parse(raw);
+
+            const { score, explanation } = parsed;
+            console.log('\n🎯 Tier 5 - Client Preference Match:');
+            console.log(`Score: ${score}`);
+            console.log(`Explanation: ${explanation}`);
+
+            totalScore += score;
+            tierExplanations.push(
+                `Client preferences match: +${score}. ${explanation}`,
+            );
+        } else {
+            tierExplanations.push('No client preferences defined. Tier 5 skipped.');
+        }
+    } catch (err) {
+        console.error('❌ Tier 5 GPT Error:', err);
+        tierExplanations.push('Tier 5 scoring failed. +0');
     }
 
     return {

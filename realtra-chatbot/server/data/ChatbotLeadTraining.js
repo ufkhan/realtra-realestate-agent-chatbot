@@ -1,4 +1,0 @@
-const ChatbotLeadTraining =
-    "'How do I get started', 'I want to sign up', 'I'm interested', 'Can I leave my details?', 'I'd like to talk to someone', 'I’m ready to proceed', 'Can someone assist me?', 'I’d like to register', 'How do I move forward?', 'Can I get started today?', 'Can I talk to a specialist?', 'How do I join?', 'I’m ready to go ahead', 'What’s the next step?', 'How can I contact someone?', 'Can someone call me?', 'I'd like to leave my contact information', 'How can I get in touch?', 'I need help getting started', 'What’s the best way to start?', 'I want to leave my information', 'How do I begin?', 'I’d like to provide my contact details', 'Who can I speak with?', 'I’m ready for the next step', 'I’d like to move forward', 'How can I proceed?'";
-
-export default ChatbotLeadTraining;
