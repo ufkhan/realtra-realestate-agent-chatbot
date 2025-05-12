@@ -1,6 +1,7 @@
 import express from 'express';
 import { OpenAI } from 'openai';
 import { connectToDB } from '../dbConnect.js';
+import scoreLeadWithGPT from '../leadscoring/leadscoring.js';
 
 const router = express.Router();
 const userSessions = {};
@@ -110,7 +111,8 @@ router.post('/', async (req, res) => {
                 respond with raw JSON ONLY (No non-JSON stuff, no triple backticks, no formatting), like this:
                 {
                 "answered": false,
-                "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries. you may have to search google. do it if they ask a question which you dont know answer to! and remember the end goal is helping them and pushing them to answer the question \"${currentStep.question}\"]",
+                "reply": "[a short and concise friendly, natural response that helps clarify or gives examples. Keep engaging the user on the same topic, answering their questions or queries. You may have to search google. Do it if they ask a 
+                    question which you dont know answer to. And remember that the end goal is helping them and pushing them to answer the question "${currentStep.question}" so if they dont know the answer to a question keep pressing, dont just leave it up to them to respond 'later']",
                 "value": ""
                 }
 
@@ -167,7 +169,7 @@ router.post('/', async (req, res) => {
             { "isStuck": true }
             
             "Respond ONLY with raw JSON. Do NOT include any extra text, commentary, greetings, or explanations. Return ONLY a valid JSON object, nothing else. No triple backticks. No formatting. If you're unsure, still return valid JSON with appropriate default values."
-`,
+            `,
                     },
                 ],
             });
@@ -263,6 +265,34 @@ router.post('/', async (req, res) => {
         );
 
         if (isFinalStep) {
+            //lead scoring
+            const { leadScore, leadScoreExplanation } = await scoreLeadWithGPT({
+                flowType: session.flowType,
+                answers: session.answers,
+                stepsLog: session.stepsLog,
+                messages: session.messages,
+                clientId,
+                sessionId,
+            });
+
+            await db.collection('leads').updateOne(
+                { sessionId },
+                {
+                    $set: {
+                        sessionId,
+                        clientId,
+                        createdAt: new Date(),
+                        flowType: session.flowType,
+                        answers: session.answers,
+                        stepsLog: session.stepsLog,
+                        completed: true,
+                        leadScore,
+                        leadScoreExplanation,
+                    },
+                },
+                { upsert: true },
+            );
+
             delete userSessions[sessionId];
             return res.json({
                 reply: [

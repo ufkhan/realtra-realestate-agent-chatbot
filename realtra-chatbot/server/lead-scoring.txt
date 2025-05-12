@@ -11,7 +11,6 @@ This file talks about the criteria for lead scoring
 - motivation
 - name
 - phone
-- email
 
 ---
 
@@ -26,7 +25,6 @@ This file talks about the criteria for lead scoring
 - mortgageStatus
 - name
 - phone
-- email
 
 ---
 
@@ -55,8 +53,8 @@ Seller:
   - Simply ensure that the user has completed the form. if so +50. otherwise 0.
 
 
----- Tier 2: Preparedness, Readiness, and Seriousness ---- 
-  - Go through the number of answers the user didnt directly answer for (go through DB and youll see if the same question took multiple attmepts to get 'answered: true'). higher = less ready and lower score
+---- Tier 2: Preparedness ---- 
+  - amount of unprovided answers 
 
 ---- Tier 3: Reasonability of Answers ----
 
@@ -78,7 +76,3 @@ Seller:
 
 
 At end, GPT can calcualte and give a final score while giving an explanation and summary of why it gave that score summarizing its findings from the above tiers
-
-
-Looking to add:
-- If user is unsure about certain fields that can be a negative sign or show unpreparefness or seriousness. trying to find a way to track that rn. if so, then can add another tier as well
