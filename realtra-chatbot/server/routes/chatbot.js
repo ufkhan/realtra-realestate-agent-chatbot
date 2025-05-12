@@ -265,42 +265,50 @@ router.post('/', async (req, res) => {
         );
 
         if (isFinalStep) {
-            //lead scoring
-            const { leadScore, leadScoreExplanation } = await scoreLeadWithGPT({
-                flowType: session.flowType,
-                answers: session.answers,
-                stepsLog: session.stepsLog,
-                messages: session.messages,
-                clientId,
-                sessionId,
-            });
-
-            await db.collection('leads').updateOne(
-                { sessionId },
-                {
-                    $set: {
-                        sessionId,
-                        clientId,
-                        createdAt: new Date(),
-                        flowType: session.flowType,
-                        answers: session.answers,
-                        stepsLog: session.stepsLog,
-                        completed: true,
-                        leadScore,
-                        leadScoreExplanation,
-                    },
-                },
-                { upsert: true },
-            );
-
-            delete userSessions[sessionId];
-            return res.json({
+            // Send reply to user immediately
+            res.json({
                 reply: [
                     parsed.reply,
                     ' ',
                     `Thanks! You're all set. One of our agents will reach out to you soon.`,
                 ],
             });
+            (async () => {
+                try {
+                    const { leadScore, leadScoreExplanation } = await scoreLeadWithGPT({
+                        flowType: session.flowType,
+                        answers: session.answers,
+                        stepsLog: session.stepsLog,
+                        messages: session.messages,
+                        clientId,
+                        sessionId,
+                    });
+
+                    await db.collection('leads').updateOne(
+                        { sessionId },
+                        {
+                            $set: {
+                                sessionId,
+                                clientId,
+                                createdAt: new Date(),
+                                flowType: session.flowType,
+                                answers: session.answers,
+                                stepsLog: session.stepsLog,
+                                completed: true,
+                                leadScore,
+                                leadScoreExplanation,
+                            },
+                        },
+                        { upsert: true },
+                    );
+
+                    delete userSessions[sessionId];
+                } catch (err) {
+                    console.error('🔥 Async lead scoring failed:', err);
+                }
+            })();
+
+            return;
         }
 
         const nextStep = session.steps[session.stepIndex];
