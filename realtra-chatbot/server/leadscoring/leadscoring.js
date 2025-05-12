@@ -40,7 +40,10 @@ const scoreLeadWithGPT = async ({
 
     // --- Tier 3: Reasonability (Max 20)
     const tier3Checks = [];
-    const weights = flowType === 'buy' ? [1, 3, 1, 2] : [1, 3, 1, 1, 2];
+    const weights =
+        flowType === 'buy'
+            ? [1, 3, 1, 2, 2, 3] // 6 buyer checks
+            : [1, 3, 1, 1, 2, 2, 3]; // 7 seller checks
 
     if (flowType === 'buy') {
         tier3Checks.push(
@@ -55,6 +58,14 @@ const scoreLeadWithGPT = async ({
             {
                 check: 'Does the overall buyer profile seem realistic and internally consistent?',
                 input: JSON.stringify(answers),
+            },
+            {
+                check: 'Is the full name realistic?',
+                input: answers.name || '',
+            },
+            {
+                check: 'Is the phone number realistic and usable?',
+                input: answers.phone || '',
             },
         );
     } else {
@@ -80,6 +91,14 @@ const scoreLeadWithGPT = async ({
             {
                 check: 'Does the overall seller profile seem realistic and internally consistent?',
                 input: JSON.stringify(answers),
+            },
+            {
+                check: 'Is the full name realistic?',
+                input: answers.name || '',
+            },
+            {
+                check: 'Is the phone number realistic and usable?',
+                input: answers.phone || '',
             },
         );
     }
