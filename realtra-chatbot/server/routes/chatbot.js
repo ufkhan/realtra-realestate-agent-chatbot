@@ -2,6 +2,7 @@ import express from 'express';
 import { OpenAI } from 'openai';
 import { connectToDB } from '../dbConnect.js';
 import scoreLeadWithGPT from '../leadscoring/leadscoring.js';
+import startInactivityTimer from '../leadscoring/inactivityTimer.js';
 
 const router = express.Router();
 const userSessions = {};
@@ -156,18 +157,18 @@ router.post('/', async (req, res) => {
                     {
                         role: 'system',
                         content: `You are a smart assistant helping evaluate real estate leads.
-            
+
             Your task is to determine whether the user is **stuck** answering this question: "${currentStep.question}"
-            
+
             Here is the recent conversation between the user and the bot:
             ${conversationHistory}
-            
+
             - If the user seems engaged — asking follow-up questions or actively trying to understand and reach a decision — respond ONLY with JSON:
             { "isStuck": false }
-            
+
             - If the user is clearly **unable to answer**, repeatedly says they don't know, or is **avoiding the question despite multiple follow-ups**, respond ONLY with JSON:
             { "isStuck": true }
-            
+
             "Respond ONLY with raw JSON. Do NOT include any extra text, commentary, greetings, or explanations. Return ONLY a valid JSON object, nothing else. No triple backticks. No formatting. If you're unsure, still return valid JSON with appropriate default values."
             `,
                     },
@@ -264,8 +265,12 @@ router.post('/', async (req, res) => {
             { upsert: true },
         );
 
+        // Start inactivity timer if not final step. If user doesnt answer for 1 minute, lead scoring function runs. If they pick up the session later, it will reset.
+        if (!isFinalStep) {
+            startInactivityTimer({ sessionId, session, clientId });
+        }
+
         if (isFinalStep) {
-            // Send reply to user immediately
             res.json({
                 reply: [
                     parsed.reply,
